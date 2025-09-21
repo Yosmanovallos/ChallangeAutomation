@@ -1,18 +1,24 @@
 // src/main/js/utils/DynamicFieldHandler.js
 
+const { RecaptchaHandler } = require('./RecaptchaHandler');
+
 class DynamicFieldHandler {
     /**
      * @param {import('@playwright/test').Page} page
      */
     constructor(page) {
         this.page = page;
+        this.recaptchaHandler = new RecaptchaHandler(page);
     }
 
     /**
-     * Wait for page to be stable
+     * Wait for page to be stable and handle reCAPTCHA if present
      */
     async waitForStability() {
         await this.page.waitForLoadState('domcontentloaded', { timeout: 3000 });
+        
+        // Check and handle reCAPTCHA if present
+        await this.recaptchaHandler.resolveRecaptcha();
     }
 
     /**
@@ -120,6 +126,9 @@ class DynamicFieldHandler {
      * @param {Object} formData - Data to fill in the form
      */
     async fillAllFields(formData) {
+        // Check for reCAPTCHA once before filling all fields
+        await this.recaptchaHandler.resolveRecaptcha();
+        
         const fieldMappings = {
             'Company Name': formData.companyName,
             'Address': formData.address,
@@ -151,6 +160,9 @@ class DynamicFieldHandler {
      */
     async clickSubmit() {
         try {
+            // Check for reCAPTCHA before submitting
+            await this.recaptchaHandler.resolveRecaptcha();
+            
             const submitButton = this.page.getByRole('button', { name: 'Submit' });
             await submitButton.click({ force: true });
             
