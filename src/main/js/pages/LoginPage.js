@@ -43,9 +43,13 @@ class LoginPage {
         // Wait for page to process login
         await this.page.waitForLoadState('domcontentloaded');
 
-        // Verify login success by checking if "Company Name" label is visible
-        const companyNameLabel = this.page.locator('text="Company Name"');
-        await expect(companyNameLabel).toBeVisible({ timeout: 10000 });
+        // Step 5: Click 'Start' button to begin the challenge
+        const startButton = this.page.locator('button:has-text("Start")');
+        await expect(startButton).toBeVisible({ timeout: 10000 });
+        await startButton.click();
+
+        // Wait for page to load after starting challenge
+        await this.page.waitForLoadState('domcontentloaded');
     }
 }
 
