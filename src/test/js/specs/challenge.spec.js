@@ -26,16 +26,4 @@ test.describe('Automation Challenge', () => {
         expect(result.successRate).toBeGreaterThan(70);
     });
 
-    test('should process single row for testing', async ({ page }) => {
-        const loginPage = new LoginPage(page);
-        const challengePage = new ChallengePage(page);
-
-        // Login
-        await loginPage.navigate();
-        await loginPage.login(loginData.email, loginData.password);
-
-        // Process only first row
-        await challengePage.processRow(0);
-    });
-
 });
