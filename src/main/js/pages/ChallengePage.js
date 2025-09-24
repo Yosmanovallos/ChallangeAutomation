@@ -14,46 +14,60 @@ class ChallengePage {
     }
 
     /**
-     * Process a single row from Excel
+     * Process a single row from Excel with retry mechanism
      * @param {number} rowIndex - Row index to process
+     * @param {number} maxRetries - Maximum number of retry attempts
      */
-    async processRow(rowIndex) {
-        try {
-            console.log(`\n📝 Processing row ${rowIndex + 1}`);
-            
-            // Get data from Excel
-            const rowData = this.excelReader.readRowData(rowIndex);
-            const formData = this.excelReader.mapToFormFields(rowData);
-            
-            console.log('Row data:', formData);
+    async processRow(rowIndex, maxRetries = 3) {
+        let lastError = null;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                console.log(`\n📝 Processing row ${rowIndex + 1} (attempt ${attempt}/${maxRetries})`);
+                
+                // Get data from Excel
+                const rowData = this.excelReader.readRowData(rowIndex);
+                const formData = this.excelReader.mapToFormFields(rowData);
+                
+                console.log('Row data:', formData);
 
-            // Wait for fields to be ready
-            await this.fieldHandler.waitForStability();
+                // Wait for fields to be ready
+                await this.fieldHandler.waitForStability();
 
-            // Fill all fields
-            const fillSuccess = await this.fieldHandler.fillAllFields(formData);
-            
-            if (!fillSuccess) {
-                throw new Error('Failed to fill all fields');
+                // Fill all fields
+                const fillSuccess = await this.fieldHandler.fillAllFields(formData);
+                
+                if (!fillSuccess) {
+                    throw new Error('Failed to fill all fields');
+                }
+
+                // Validate fields before submit
+                const validationSuccess = await this.fieldHandler.validateFields(formData);
+                
+                if (!validationSuccess) {
+                    throw new Error('Field validation failed');
+                }
+
+                // Click Submit
+                await this.fieldHandler.clickSubmit();
+
+                console.log(`✅ Row ${rowIndex + 1} processed successfully`);
+                return true;
+
+            } catch (error) {
+                lastError = error;
+                console.error(`❌ Error processing row ${rowIndex + 1} (attempt ${attempt}/${maxRetries}):`, error.message);
+                
+                // If this is not the last attempt, wait before retrying
+                if (attempt < maxRetries) {
+                    console.log(`⏳ Waiting before retry...`);
+                    await this.page.waitForTimeout(1000);
+                }
             }
-
-            // Validate fields before submit
-            const validationSuccess = await this.fieldHandler.validateFields(formData);
-            
-            if (!validationSuccess) {
-                throw new Error('Field validation failed');
-            }
-
-            // Click Submit
-            await this.fieldHandler.clickSubmit();
-
-            console.log(`✅ Row ${rowIndex + 1} processed successfully`);
-            return true;
-
-        } catch (error) {
-            console.error(`❌ Error processing row ${rowIndex + 1}:`, error.message);
-            throw error;
         }
+        
+        // If all attempts failed, throw the last error
+        throw lastError;
     }
 
     /**
